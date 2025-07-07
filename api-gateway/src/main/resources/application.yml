@@ -1,0 +1,96 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # Auth Service Routes
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=1
+            - name: JwtAuthenticationFilter
+
+        # Bid Service Routes (debe ir antes que user-service y auction-service para que tenga prioridad)
+        - id: bid-service-auctions
+          uri: lb://bid-service
+          predicates:
+            - Path=/api/auctions/*/bids/**
+          filters:
+            - StripPrefix=1
+            - name: JwtAuthenticationFilter
+
+        - id: bid-service-users
+          uri: lb://bid-service
+          predicates:
+            - Path=/api/users/*/bids/**
+          filters:
+            - StripPrefix=1
+            - name: JwtAuthenticationFilter
+
+        # User Service Routes
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=1
+            - name: JwtAuthenticationFilter
+        
+        # Auction Service Routes
+        - id: auction-service
+          uri: lb://auction-service
+          predicates:
+            - Path=/api/auctions/**, /api/categories/**
+          filters:
+            - StripPrefix=1
+            - name: JwtAuthenticationFilter
+        
+        # Notification Service Routes
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - StripPrefix=1
+            - name: JwtAuthenticationFilter
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, gateway
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
