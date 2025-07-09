@@ -105,11 +105,13 @@ docker-compose down
 
 #### Paso 1: Configurar bases de datos
 ```bash
-# Crear bases de datos en PostgreSQL
-createdb users_db
-createdb auctions_db
-createdb bids_db
-createdb notifications_db
+# Crear bases de datos en PostgreSQL o cockroach
+auth_db
+users_db
+auctions_db
+auction_query_db
+bids_db
+notifications_db
 ```
 
 #### Paso 2: Iniciar servicios de infraestructura
