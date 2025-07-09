@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/usuarios")
 public class UserBidController {
     private final BidService bidService;
     private final JwtUtils jwtUtils;
@@ -22,7 +22,7 @@ public class UserBidController {
         this.jwtUtils = jwtUtils;
     }
 
-    @GetMapping("/{userId}/bids")
+    @GetMapping("/{userId}/pujas")
     public ResponseEntity<List<Bid>> getAllBidsForUser(@PathVariable Long userId, HttpServletRequest request) {
         // Extraer JWT del header Authorization
         String headerAuth = request.getHeader("Authorization");

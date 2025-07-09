@@ -7,6 +7,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="auth-service" />
+        <module name="auctionquery-service" />
         <module name="api-gateway" />
         <module name="bid-service" />
         <module name="user-service" />
@@ -20,6 +21,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="api-gateway" options="-parameters" />
       <module name="auction-service" options="-parameters" />
+      <module name="auctionquery-service" options="-parameters" />
       <module name="auth-service" options="-parameters" />
       <module name="bid-service" options="-parameters" />
       <module name="eureka-server" options="-parameters" />

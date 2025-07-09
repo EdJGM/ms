@@ -4,17 +4,6 @@ server:
 spring:
   application:
     name: notification-service
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: your-email@gmail.com
-    password: your-app-password
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
   rabbitmq:
     host: localhost
     port: 5672
@@ -38,6 +27,11 @@ auth:
   jwtSecret: "mi_super_clave_secreta_para_jwt_2025_con_al_menos_64_caracteres_para_HS512_seguridad_completa"
   jwtExpirationMs: 86400000
 
+websocket:
+  allowedOrigins: "*"
+  maxTextMessageSize: 8192
+  maxBinaryMessageSize: 8192
+
 eureka:
   client:
     service-url:
@@ -51,11 +45,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics
+        include: health, info, metrics, websocket
 
 logging:
   level:
     com.auction.notification: DEBUG
+    org.springframework.web.socket: DEBUG
 
 ---
 spring:

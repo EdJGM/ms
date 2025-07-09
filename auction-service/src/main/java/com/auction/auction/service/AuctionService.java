@@ -10,4 +10,9 @@ public interface AuctionService {
     void deleteAuction(Long id);
     Auction updateAuction(Long id, AuctionRequest auctionRequest);
     Auction getAuctionById(Long id);
+    Auction startAuction(Long id, String ownerUsername);
+    Auction endAuction(Long id, String ownerUsername);
+    Auction extendAuction(Long id, int minutes, String ownerUsername);
+    boolean joinModerationSession(Long id, String ownerUsername);
+    boolean leaveModerationSession(Long id, String ownerUsername);
 }

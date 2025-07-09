@@ -14,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -21,6 +22,9 @@ public class WebSecurityConfig {
     
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
+    
+    @Autowired
+    private RoleBasedAuthorizationFilter roleBasedAuthorizationFilter;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -47,11 +51,23 @@ public class WebSecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Endpoints públicos con prefijo /auth/
                 .requestMatchers("/auth/register").permitAll()
                 .requestMatchers("/auth/login").permitAll()
+                .requestMatchers("/auth/validateToken").permitAll()
+                .requestMatchers("/auth/refreshToken").permitAll()
+                // Endpoints públicos sin prefijo (desde gateway)
+                .requestMatchers("/register").permitAll()
+                .requestMatchers("/login").permitAll()
+                .requestMatchers("/validateToken").permitAll()
+                .requestMatchers("/refreshToken").permitAll()
+                // Otros endpoints públicos
                 .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/swagger-ui/**").permitAll()
+                .requestMatchers("/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated()
-            );
+            )
+            .addFilterBefore(roleBasedAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }

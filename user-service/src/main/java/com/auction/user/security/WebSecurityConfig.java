@@ -37,19 +37,24 @@ public class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.cors().and().csrf().disable()
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
+        http
+                .cors(cors -> cors.configure(http))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/users/register").permitAll()
                         .requestMatchers("/users/login").permitAll()
                         .requestMatchers("/users/by-email").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/users").authenticated() // Cambiado de hasRole("ADMIN") a authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/users/change-password").hasAnyRole("ADMIN", "USER")
-                        .requestMatchers(HttpMethod.DELETE, "/users/{userId}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/users").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/users/change-password").hasAnyRole("ADMINISTRADOR", "PARTICIPANTE", "MODERADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/users/{userId}").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated()
-                );
-        http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
+                )
+                .addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }

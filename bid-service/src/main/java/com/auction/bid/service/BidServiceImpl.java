@@ -1,9 +1,22 @@
 package com.auction.bid.service;
 
+import com.auction.bid.client.AuctionServiceClient;
+import com.auction.bid.client.NotificationServiceClient;
+import com.auction.bid.client.UserServiceClient;
+import com.auction.bid.dto.AuctionDto;
 import com.auction.bid.dto.BidRequest;
+import com.auction.bid.dto.NewBidEventDto;
+import com.auction.bid.exception.BusinessRuleException;
+import com.auction.bid.exception.ResourceNotFoundException;
 import com.auction.bid.model.Bid;
 import com.auction.bid.repository.BidRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -11,8 +24,100 @@ import java.util.Optional;
 @Service
 public class BidServiceImpl implements BidService {
     private final BidRepository bidRepository;
+
+    @Autowired
+    private AuctionServiceClient auctionServiceClient;
+
+    @Autowired
+    private UserServiceClient userServiceClient;
+
+    @Autowired
+    private NotificationServiceClient notificationServiceClient;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private BidValidationService bidValidationService;
+
     public BidServiceImpl(BidRepository bidRepository) {
         this.bidRepository = bidRepository;
+    }
+
+    @Override
+    public Bid createBidWithValidation(BidRequest bidRequest, Long auctionId, String username, String token) {
+        try {
+            // 1. Ejecutar todas las validaciones de negocio
+            bidValidationService.validateBid(bidRequest, auctionId, token);
+
+            // 2. Verificar que el usuario puede pujar
+            if (!canUserBid(auctionId, username, token)) {
+                throw new BusinessRuleException("El usuario no puede pujar en esta subasta");
+            }
+
+            // 3. Obtener información del usuario
+            String userResponse = userServiceClient.getUserByUsername(username, token);
+            JsonNode userNode = objectMapper.readTree(userResponse);
+            Long userId = userNode.get("id").asLong();
+
+            // 4. Crear la puja
+            Bid savedBid = createBid(bidRequest, auctionId, userId, username);
+
+            // 5. Actualizar precio actual en auction-service (si es necesario)
+            // Esto podría requerir un endpoint adicional en auction-service
+
+            // 6. Notificar al servicio de notificaciones WebSocket
+            try {
+                NewBidEventDto eventDto = new NewBidEventDto(
+                        auctionId.toString(),
+                        savedBid.getBidPrice(),
+                        savedBid.getUsername()
+                );
+                notificationServiceClient.broadcastNewBid(eventDto, token);
+            } catch (Exception e) {
+                // Log pero no fallar - la puja ya se guardó
+                System.err.println("Error notifying new bid: " + e.getMessage());
+            }
+
+            return savedBid;
+
+        } catch (BusinessRuleException | ResourceNotFoundException e) {
+            // Re-lanzar excepciones de negocio
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Error al procesar la puja: " + e.getMessage(), e);
+        }
+    }
+
+    //Validar reglas de negocio
+    @Override
+    public void validateBidRules(BidRequest bidRequest, Long auctionId, String token) {
+        bidValidationService.validateBid(bidRequest, auctionId, token);
+    }
+
+    //Verificar si un usuario puede pujar
+    @Override
+    public boolean canUserBid(Long auctionId, String username, String token) {
+        try {
+            AuctionDto auction = bidValidationService.getAuctionInfo(auctionId, token);
+
+            // El dueño de la subasta no puede pujar en su propia subasta
+            if (auction.getOwnerUsername() != null && auction.getOwnerUsername().equals(username)) {
+                return false;
+            }
+
+            // Verificar que la subasta esté activa
+            return bidValidationService.isAuctionActive(auctionId, token);
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public Bid createBid(BidRequest bidRequest, Long auctionId, String username) {
+        String token = getAuthorizationToken();
+        return createBidWithValidation(bidRequest, auctionId, username, token);
     }
 
     @Override
@@ -73,5 +178,27 @@ public class BidServiceImpl implements BidService {
             }
         }
         return userBids;
+    }
+
+    @Override
+    public boolean isAuctionActive(Long auctionId) {
+        try {
+            String token = getAuthorizationToken();
+            Boolean isActive = auctionServiceClient.isAuctionActive(auctionId, token);
+            return isActive != null ? isActive : false;
+        } catch (Exception e) {
+            // Si hay error en la comunicación, asumir que la subasta no está activa
+            return false;
+        }
+    }
+
+    private String getAuthorizationToken() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            HttpServletRequest request = attributes.getRequest();
+            String authHeader = request.getHeader("Authorization");
+            return authHeader != null ? authHeader : "";
+        }
+        return "";
     }
 }

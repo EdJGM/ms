@@ -6,7 +6,6 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -32,16 +31,40 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
             String path = request.getPath().toString();
-            
-            // Skip authentication for auth endpoints
-            if (isAuthEndpoint(path)) {
+
+            // Logging para debug
+            System.out.println("JwtAuthenticationFilter - Processing path: " + path);
+
+            // Lista de endpoints públicos que NO requieren autenticación
+            List<String> publicEndpoints = List.of(
+                    "/api/v1/auth/register",
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/refreshToken",
+                    "/api/v1/auth/validateToken",
+                    "/api/v1/auth/revokeToken",
+                    "/register",
+                    "/login",
+                    "/refreshToken",
+                    "/validateToken",
+                    "/revokeToken",
+                    "/actuator",
+                    "/health"
+            );
+
+            // Si es un endpoint público, continuar sin validación
+            if (isPublicEndpoint(path, publicEndpoints)) {
+                System.out.println("JwtAuthenticationFilter - Public endpoint detected: " + path);
                 return chain.filter(exchange);
             }
 
-            String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            
+            System.out.println("JwtAuthenticationFilter - Protected endpoint, checking token for: " + path);
+
+            // Extraer token del header Authorization
+            String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
+
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return onError(exchange, "No Authorization header", HttpStatus.UNAUTHORIZED);
+                System.out.println("JwtAuthenticationFilter - No valid Authorization header found");
+                return onError(exchange, "Missing or invalid Authorization header", HttpStatus.UNAUTHORIZED);
             }
 
             String token = authHeader.substring(7);
@@ -53,6 +76,8 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
                     .parseClaimsJws(token)
                     .getBody();
 
+                System.out.println("JwtAuthenticationFilter - Token validated successfully for user: " + claims.getSubject());
+
                 // Add user information to headers
                 ServerHttpRequest modifiedRequest = request.mutate()
                     .header("X-User-Id", claims.getSubject())
@@ -62,14 +87,18 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
 
                 return chain.filter(exchange.mutate().request(modifiedRequest).build());
             } catch (Exception e) {
-                return onError(exchange, "Invalid token", HttpStatus.UNAUTHORIZED);
+                System.out.println("JwtAuthenticationFilter - Token validation failed: " + e.getMessage());
+                return onError(exchange, "Invalid token: " + e.getMessage(), HttpStatus.UNAUTHORIZED);
             }
         };
     }
 
-    private boolean isAuthEndpoint(String path) {
-        List<String> authEndpoints = List.of("/auth/register", "/auth/login");
-        return authEndpoints.stream().anyMatch(path::equals);
+    private boolean isPublicEndpoint(String path, List<String> publicEndpoints) {
+        boolean isPublic = publicEndpoints.stream().anyMatch(endpoint ->
+            path.equals(endpoint) || path.startsWith(endpoint + "/")
+        );
+        System.out.println("JwtAuthenticationFilter - isPublicEndpoint check: " + path + " -> " + isPublic);
+        return isPublic;
     }
 
     private Mono<Void> onError(org.springframework.web.server.ServerWebExchange exchange, String err, HttpStatus httpStatus) {

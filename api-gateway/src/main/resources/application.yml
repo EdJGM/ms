@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8000
 
 spring:
   application:
@@ -11,57 +11,192 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # Auth Service Routes
-        - id: auth-service
+        # API 1.1: Servicio de Autenticación y Gestión de Cuenta
+        - id: auth-service-register
           uri: lb://auth-service
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/v1/auth/register
           filters:
-            - StripPrefix=1
-            - name: JwtAuthenticationFilter
+            - StripPrefix=3
 
-        # Bid Service Routes (debe ir antes que user-service y auction-service para que tenga prioridad)
-        - id: bid-service-auctions
-          uri: lb://bid-service
+        - id: auth-service-login
+          uri: lb://auth-service
           predicates:
-            - Path=/api/auctions/*/bids/**
+            - Path=/api/v1/auth/login
           filters:
-            - StripPrefix=1
-            - name: JwtAuthenticationFilter
+            - StripPrefix=3
 
-        - id: bid-service-users
-          uri: lb://bid-service
+        - id: auth-service-refresh
+          uri: lb://auth-service
           predicates:
-            - Path=/api/users/*/bids/**
+            - Path=/api/v1/auth/refreshToken
           filters:
-            - StripPrefix=1
+            - StripPrefix=3
+
+        # Nuevos endpoints de auth
+        - id: auth-service-validate-token
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/validateToken
+          filters:
+            - StripPrefix=3
+
+        - id: auth-service-logout
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/logout
+          filters:
+            - StripPrefix=3
             - name: JwtAuthenticationFilter
 
-        # User Service Routes
-        - id: user-service
+        - id: auth-service-revoke-token
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/revokeToken
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        - id: auth-service-sessions
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/sessions
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        - id: auth-service-roles-test
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/roles/test
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        - id: auth-service-admin-test
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/v1/auth/admin/test
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        # API 1.2: Servicio de Administración de Usuarios
+        - id: user-service-admin-users
           uri: lb://user-service
           predicates:
-            - Path=/api/users/**
+            - Path=/api/v1/admin/users/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=3
             - name: JwtAuthenticationFilter
-        
-        # Auction Service Routes
-        - id: auction-service
+
+        # Cambio de contraseña (usuario autenticado)
+        - id: user-service-change-password
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/users/me/password
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        # API 2: Servicio de Subastas (Productos)
+        - id: auction-service-productos
           uri: lb://auction-service
           predicates:
-            - Path=/api/auctions/**, /api/categories/**
+            - Path=/api/v1/productos/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=3
             - name: JwtAuthenticationFilter
-        
-        # Notification Service Routes
-        - id: notification-service
+
+        # API 2: Servicio de Subastas (Subastas)
+        - id: auction-service-subastas
+          uri: lb://auction-service
+          predicates:
+            - Path=/api/v1/subastas/**
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        # API 3: Servicio de Pujas (Crear puja)
+        - id: bid-service-crear-puja
+          uri: lb://bid-service
+          predicates:
+            - Path=/api/v1/subastas/*/pujas
+            - Method=POST
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        # API 4: Servicio de Consulta de Subastas Activas
+        - id: auction-query-service-subastas
+          uri: lb://auction-query-service
+          predicates:
+            - Path=/api/v1/subastas
+            - Method=GET
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        - id: auction-query-service-subasta-detalle
+          uri: lb://auction-query-service
+          predicates:
+            - Path=/api/v1/subastas/*
+            - Method=GET
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        - id: auction-query-service-subastas-list
+          uri: lb://auction-query-service
+          predicates:
+            - Path=/api/v1/subastas
+            - Method=GET
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        - id: auction-query-service-subasta-detalle
+          uri: lb://auction-query-service
+          predicates:
+            - Path=/api/v1/subastas/{id}
+            - Method=GET
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        - id: auction-query-service-subastas-search
+          uri: lb://auction-query-service
+          predicates:
+            - Path=/api/v1/subastas/search
+            - Method=GET
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        - id: auction-query-service-historial
+          uri: lb://auction-query-service
+          predicates:
+            - Path=/api/v1/usuarios/me/historial
+            - Method=GET
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        # API 4: Historial de usuario
+        - id: auction-query-service-historial
+          uri: lb://auction-query-service
+          predicates:
+            - Path=/api/v1/usuarios/me/historial
+          filters:
+            - StripPrefix=3
+            - name: JwtAuthenticationFilter
+
+        # API 5: Servicio de Notificaciones (WebSocket)
+        - id: notification-service-websocket
           uri: lb://notification-service
           predicates:
-            - Path=/api/notifications/**
+            - Path=/ws/**
           filters:
-            - StripPrefix=1
             - name: JwtAuthenticationFilter
 
 eureka:
