@@ -16,6 +16,7 @@ Este proyecto implementa un sistema completo de subastas en línea usando una ar
 
 ### 🛠️ Tecnologías Utilizadas
 
+- **Version de JAVA** - 17
 - **Spring Boot 3.2.0** - Framework principal
 - **Spring Cloud 2023.0.0** - Microservicios y Service Discovery
 - **Spring Security 6.x** - Seguridad y autenticación
