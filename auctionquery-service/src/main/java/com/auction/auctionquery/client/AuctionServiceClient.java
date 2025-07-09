@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-@FeignClient(name = "auction-service", url = "http://localhost:8083")
+@FeignClient(name = "auction-service")
 public interface AuctionServiceClient {
 
     @GetMapping("/subastas")

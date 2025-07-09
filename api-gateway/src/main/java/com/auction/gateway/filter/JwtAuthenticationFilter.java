@@ -6,6 +6,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -32,73 +33,43 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
             ServerHttpRequest request = exchange.getRequest();
             String path = request.getPath().toString();
 
-            // Logging para debug
-            System.out.println("JwtAuthenticationFilter - Processing path: " + path);
-
-            // Lista de endpoints públicos que NO requieren autenticación
-            List<String> publicEndpoints = List.of(
-                    "/api/v1/auth/register",
-                    "/api/v1/auth/login",
-                    "/api/v1/auth/refreshToken",
-                    "/api/v1/auth/validateToken",
-                    "/api/v1/auth/revokeToken",
-                    "/register",
-                    "/login",
-                    "/refreshToken",
-                    "/validateToken",
-                    "/revokeToken",
-                    "/actuator",
-                    "/health"
-            );
-
-            // Si es un endpoint público, continuar sin validación
-            if (isPublicEndpoint(path, publicEndpoints)) {
-                System.out.println("JwtAuthenticationFilter - Public endpoint detected: " + path);
+            // Skip authentication for auth endpoints
+            if (isAuthEndpoint(path)) {
                 return chain.filter(exchange);
             }
 
-            System.out.println("JwtAuthenticationFilter - Protected endpoint, checking token for: " + path);
-
-            // Extraer token del header Authorization
-            String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
+            String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                System.out.println("JwtAuthenticationFilter - No valid Authorization header found");
-                return onError(exchange, "Missing or invalid Authorization header", HttpStatus.UNAUTHORIZED);
+                return onError(exchange, "No Authorization header", HttpStatus.UNAUTHORIZED);
             }
 
             String token = authHeader.substring(7);
-            
+
             try {
                 Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(key)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-
-                System.out.println("JwtAuthenticationFilter - Token validated successfully for user: " + claims.getSubject());
+                        .setSigningKey(key)
+                        .build()
+                        .parseClaimsJws(token)
+                        .getBody();
 
                 // Add user information to headers
                 ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", claims.getSubject())
-                    .header("X-User-Email", claims.get("email", String.class))
-                    .header("X-User-Role", claims.get("role", String.class))
-                    .build();
+                        .header("X-User-Id", claims.getSubject())
+                        .header("X-User-Email", claims.get("email", String.class))
+                        .header("X-User-Role", claims.get("role", String.class))
+                        .build();
 
                 return chain.filter(exchange.mutate().request(modifiedRequest).build());
             } catch (Exception e) {
-                System.out.println("JwtAuthenticationFilter - Token validation failed: " + e.getMessage());
-                return onError(exchange, "Invalid token: " + e.getMessage(), HttpStatus.UNAUTHORIZED);
+                return onError(exchange, "Invalid token", HttpStatus.UNAUTHORIZED);
             }
         };
     }
 
-    private boolean isPublicEndpoint(String path, List<String> publicEndpoints) {
-        boolean isPublic = publicEndpoints.stream().anyMatch(endpoint ->
-            path.equals(endpoint) || path.startsWith(endpoint + "/")
-        );
-        System.out.println("JwtAuthenticationFilter - isPublicEndpoint check: " + path + " -> " + isPublic);
-        return isPublic;
+    private boolean isAuthEndpoint(String path) {
+        List<String> authEndpoints = List.of("/register", "/login", "/refreshToken", "/validateToken", "/logout", "/revokeToken");
+        return authEndpoints.stream().anyMatch(path::equals);
     }
 
     private Mono<Void> onError(org.springframework.web.server.ServerWebExchange exchange, String err, HttpStatus httpStatus) {

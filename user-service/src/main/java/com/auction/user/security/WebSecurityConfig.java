@@ -45,11 +45,11 @@ public class WebSecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/users/register").permitAll()
-                        .requestMatchers("/users/login").permitAll()
-                        .requestMatchers("/users/by-email").permitAll()
+                        .requestMatchers("/users/internal/register").permitAll()
+                        .requestMatchers("/users/by-email").permitAll()  // Mantener público para llamadas internas
+                        .requestMatchers("/users/by-username").permitAll()  // Agregar también este
+                        .requestMatchers("/me/password").hasAnyRole("ADMINISTRADOR", "PARTICIPANTE", "MODERADOR")
                         .requestMatchers(HttpMethod.GET, "/users").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/users/change-password").hasAnyRole("ADMINISTRADOR", "PARTICIPANTE", "MODERADOR")
                         .requestMatchers(HttpMethod.DELETE, "/users/{userId}").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated()
                 )

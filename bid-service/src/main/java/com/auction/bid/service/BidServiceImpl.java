@@ -6,11 +6,11 @@ import com.auction.bid.client.UserServiceClient;
 import com.auction.bid.dto.AuctionDto;
 import com.auction.bid.dto.BidRequest;
 import com.auction.bid.dto.NewBidEventDto;
+import com.auction.bid.dto.UserDto;
 import com.auction.bid.exception.BusinessRuleException;
 import com.auction.bid.exception.ResourceNotFoundException;
 import com.auction.bid.model.Bid;
 import com.auction.bid.repository.BidRepository;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -56,9 +56,8 @@ public class BidServiceImpl implements BidService {
             }
 
             // 3. Obtener información del usuario
-            String userResponse = userServiceClient.getUserByUsername(username, token);
-            JsonNode userNode = objectMapper.readTree(userResponse);
-            Long userId = userNode.get("id").asLong();
+            UserDto user = userServiceClient.getUserByEmail(username, token);
+            Long userId = user.getId();
 
             // 4. Crear la puja
             Bid savedBid = createBid(bidRequest, auctionId, userId, username);

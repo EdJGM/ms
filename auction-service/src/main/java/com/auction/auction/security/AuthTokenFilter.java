@@ -25,17 +25,18 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String jwt = parseJwt(request);
-            System.out.println("🔍 [AUCTION] JWT Token: " + (jwt != null ? "Present" : "Null"));
-            System.out.println("🔍 [AUCTION] Request URI: " + request.getRequestURI());
-            
-            if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                String username = jwtUtils.getUserNameFromJwtToken(jwt);
-                System.out.println("🔍 [AUCTION] Username from JWT: " + username);
+            // 🔄 NUEVO: Primero intentar usar el rol del header del API Gateway
+            String userRole = request.getHeader("X-User-Role");
+            String username = request.getHeader("X-User-Id");
 
-                // Crear authorities básicas para el usuario autenticado
+            if (userRole != null && username != null) {
+                System.out.println("🔍 [AUCTION] Using headers from API Gateway");
+                System.out.println("🔍 [AUCTION] Username from header: " + username);
+                System.out.println("🔍 [AUCTION] Role from header: " + userRole);
+
+                // Usar el rol del header del API Gateway
                 List<SimpleGrantedAuthority> authorities =
-                        List.of(new SimpleGrantedAuthority("ROLE_PARTICIPANTE"));
+                        List.of(new SimpleGrantedAuthority("ROLE_" + userRole));
 
                 User userDetails = new User(username, "", authorities);
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -44,12 +45,38 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 System.out.println("🔍 [AUCTION] Authentication set with authorities: " + authorities);
             } else {
-                System.out.println("🔍 [AUCTION] JWT validation failed or JWT is null");
+                // Fallback: usar el token JWT directamente
+                String jwt = parseJwt(request);
+                System.out.println("🔍 [AUCTION] JWT Token: " + (jwt != null ? "Present" : "Null"));
+                System.out.println("🔍 [AUCTION] Request URI: " + request.getRequestURI());
+
+                if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+                    String usernameFromJwt = jwtUtils.getUserNameFromJwtToken(jwt);
+                    String roleFromJwt = jwtUtils.getRoleFromJwtToken(jwt); // Necesitamos este método
+
+                    System.out.println("🔍 [AUCTION] Username from JWT: " + usernameFromJwt);
+                    System.out.println("🔍 [AUCTION] Role from JWT: " + roleFromJwt);
+
+                    // Usar el rol del JWT, o PARTICIPANTE por defecto
+                    String finalRole = roleFromJwt != null ? roleFromJwt : "PARTICIPANTE";
+                    List<SimpleGrantedAuthority> authorities =
+                            List.of(new SimpleGrantedAuthority("ROLE_" + finalRole));
+
+                    User userDetails = new User(usernameFromJwt, "", authorities);
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    System.out.println("🔍 [AUCTION] Authentication set with authorities: " + authorities);
+                } else {
+                    System.out.println("🔍 [AUCTION] JWT validation failed or JWT is null");
+                }
             }
         } catch (Exception e) {
             System.out.println("🔍 [AUCTION] Exception in AuthTokenFilter: " + e.getMessage());
             e.printStackTrace();
         }
+
         filterChain.doFilter(request, response);
     }
     private String parseJwt(HttpServletRequest request) {

@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/users/me")
+@RequestMapping("/me")  // Cambiar de "/users/me" a "/me" para coincidir con el path después del StripPrefix
 public class UserMeController {
 
     private final UserService userService;

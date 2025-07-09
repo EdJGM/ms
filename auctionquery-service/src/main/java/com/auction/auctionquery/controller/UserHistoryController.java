@@ -2,7 +2,6 @@ package com.auction.auctionquery.controller;
 
 import com.auction.auctionquery.model.UserHistory;
 import com.auction.auctionquery.service.UserHistoryService;
-import com.auction.auctionquery.security.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,11 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserHistoryController {
 
     private final UserHistoryService userHistoryService;
-    private final JwtUtils jwtUtils;
 
-    public UserHistoryController(UserHistoryService userHistoryService, JwtUtils jwtUtils) {
+    public UserHistoryController(UserHistoryService userHistoryService) {
         this.userHistoryService = userHistoryService;
-        this.jwtUtils = jwtUtils;
     }
 
     @GetMapping("/historial")
@@ -29,21 +26,19 @@ public class UserHistoryController {
             @RequestParam(defaultValue = "10") int limit,
             HttpServletRequest request) {
 
-        String token = extractToken(request);
-        if (!jwtUtils.validateJwtToken(token)) {
+        // 🔄 NUEVO: Usar las cabeceras del API Gateway
+        String username = request.getHeader("X-User-Id");
+        String userRole = request.getHeader("X-User-Role");
+
+        if (username == null || userRole == null) {
+            System.out.println("🔍 [AUCTION-QUERY] Headers missing - X-User-Id: " + username + ", X-User-Role: " + userRole);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String username = jwtUtils.getUserNameFromJwtToken(token);
+        System.out.println("🔍 [AUCTION-QUERY] Username from header: " + username);
+        System.out.println("🔍 [AUCTION-QUERY] Role from header: " + userRole);
+
         UserHistory history = userHistoryService.getUserHistory(username, page, limit);
         return ResponseEntity.ok(history);
-    }
-
-    private String extractToken(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-        if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
-            return headerAuth.substring(7);
-        }
-        return null;
     }
 }

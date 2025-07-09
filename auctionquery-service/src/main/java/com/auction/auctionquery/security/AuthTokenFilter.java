@@ -26,22 +26,44 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String jwt = parseJwt(request);
-            if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                String username = jwtUtils.getUserNameFromJwtToken(jwt);
+            // 🔄 NUEVO: Primero intentar usar las cabeceras del API Gateway
+            String userRole = request.getHeader("X-User-Role");
+            String username = request.getHeader("X-User-Id");
 
-                // Crear authorities básicas para el usuario autenticado
+            if (userRole != null && username != null) {
+                System.out.println("🔍 [AUCTION-QUERY] Using headers from API Gateway");
+                System.out.println("🔍 [AUCTION-QUERY] Username from header: " + username);
+                System.out.println("🔍 [AUCTION-QUERY] Role from header: " + userRole);
+
+                // Usar el rol del header del API Gateway
                 List<SimpleGrantedAuthority> authorities =
-                        List.of(new SimpleGrantedAuthority("ROLE_PARTICIPANTE"));
+                        List.of(new SimpleGrantedAuthority("ROLE_" + userRole));
 
-                User userDetails = new User(username, "", Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+                User userDetails = new User(username, "", authorities);
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                System.out.println("🔍 [AUCTION-QUERY] Authentication set with authorities: " + authorities);
+            } else {
+                // Fallback: usar el token JWT directamente
+                String jwt = parseJwt(request);
+                if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+                    String usernameFromJwt = jwtUtils.getUserNameFromJwtToken(jwt);
+
+                    // Crear authorities básicas para el usuario autenticado
+                    List<SimpleGrantedAuthority> authorities =
+                            List.of(new SimpleGrantedAuthority("ROLE_PARTICIPANTE"));
+
+                    User userDetails = new User(usernameFromJwt, "", authorities);
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         } catch (Exception e) {
-            // log error if needed
+            System.out.println("🔍 [AUCTION-QUERY] Exception in AuthTokenFilter: " + e.getMessage());
         }
         filterChain.doFilter(request, response);
     }

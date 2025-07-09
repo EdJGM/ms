@@ -29,19 +29,20 @@ public class BidController {
     @PostMapping("/{id}/pujas")
     public ResponseEntity<?> createBid(@PathVariable Long id, @RequestBody BidRequest bidRequest, HttpServletRequest request) {
         try {
-            String headerAuth = request.getHeader("Authorization");
-            String token = null;
-            if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
-                token = headerAuth.substring(7);
-            }
-            if (token == null || !jwtUtils.validateJwtToken(token)) {
+            // 🔄 NUEVO: Usar las cabeceras del API Gateway
+            String username = request.getHeader("X-User-Id");
+            String userRole = request.getHeader("X-User-Role");
+
+            if (username == null || userRole == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "UNAUTHORIZED", "message", "Token inválido o ausente"));
+                        .body(Map.of("error", "UNAUTHORIZED", "message", "Usuario no autenticado"));
             }
-            String username = jwtUtils.getUserNameFromJwtToken(token);
+
+            System.out.println("🔍 [BID-SERVICE] Username from header: " + username);
+            System.out.println("🔍 [BID-SERVICE] Role from header: " + userRole);
 
             // ✅ Usar método con validaciones completas
-            Bid bid = bidService.createBidWithValidation(bidRequest, id, username, headerAuth);
+            Bid bid = bidService.createBidWithValidation(bidRequest, id, username, request.getHeader("Authorization"));
 
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                     "success", true,
@@ -61,7 +62,7 @@ public class BidController {
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                    "error", "INTERNAL_ERROR",
+                    "error", "INTERNAL_SERVER_ERROR",
                     "message", "Error interno del servidor: " + e.getMessage()
             ));
         }

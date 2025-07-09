@@ -51,24 +51,17 @@ public class WebSecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Endpoints públicos con prefijo /auth/
-                .requestMatchers("/auth/register").permitAll()
-                .requestMatchers("/auth/login").permitAll()
-                .requestMatchers("/auth/validateToken").permitAll()
-                .requestMatchers("/auth/refreshToken").permitAll()
-                // Endpoints públicos sin prefijo (desde gateway)
                 .requestMatchers("/register").permitAll()
                 .requestMatchers("/login").permitAll()
-                .requestMatchers("/validateToken").permitAll()
                 .requestMatchers("/refreshToken").permitAll()
-                // Otros endpoints públicos
+                .requestMatchers("/validateToken").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(roleBasedAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 }

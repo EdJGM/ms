@@ -20,7 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/")  // Cambiar de "/auth" a "/" para coincidir con el path después del StripPrefix
 public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -35,38 +35,61 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        User userDetails = (User) authentication.getPrincipal();
+        System.out.println("=== Login Debug ===");
+        System.out.println("Login attempt for email: " + loginRequest.getEmail());
 
         try {
-            // Obtener rol del usuario
-            UserDto userDto = userServiceClient.getUserByEmail(loginRequest.getEmail());
-            String role = userDto.getRole() != null ? userDto.getRole() : "PARTICIPANTE";
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
-            // Usar TokenService para generar tokens con roles
-            Map<String, String> tokens = tokenService.generateTokensWithRole(authentication, role);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            User userDetails = (User) authentication.getPrincipal();
+            System.out.println("Authentication successful for: " + userDetails.getUsername());
 
-            return ResponseEntity.ok(new JwtResponse(
-                    tokens.get("accessToken"),
-                    tokens.get("refreshToken"),
-                    userDetails.getUsername(),
-                    userDetails.getUsername(),
-                    86400 // 24 horas en segundos
-            ));
-        } catch (Exception e) {
-            // Si hay error obteniendo rol, usar rol por defecto
-            Map<String, String> tokens = tokenService.generateTokens(authentication);
+            // 🔄 NUEVO: Siempre consultar rol actualizado desde la base de datos
+            String currentRole;
+            try {
+                System.out.println("🔄 [LOGIN] Consulting current role from DB...");
+                UserDto userDto = userServiceClient.getUserByEmail(loginRequest.getEmail());
+                currentRole = userDto.getRole() != null ? userDto.getRole() : "PARTICIPANTE";
+                System.out.println("🔄 [LOGIN] Current role from DB: " + currentRole);
+            } catch (Exception e) {
+                System.out.println("⚠️ [LOGIN] Error getting role from DB, using default: " + e.getMessage());
+                currentRole = "PARTICIPANTE";
+            }
 
-            return ResponseEntity.ok(new JwtResponse(
-                    tokens.get("accessToken"),
-                    tokens.get("refreshToken"),
-                    userDetails.getUsername(),
-                    userDetails.getUsername(),
-                    86400
-            ));
+            try {
+                // Usar TokenService para generar tokens con rol actualizado
+                System.out.println("🔄 [LOGIN] Generating tokens with updated role: " + currentRole);
+                Map<String, String> tokens = tokenService.generateTokensWithRole(authentication, currentRole);
+                System.out.println("✅ [LOGIN] Tokens generated successfully with role: " + currentRole);
+
+                return ResponseEntity.ok(new JwtResponse(
+                        tokens.get("accessToken"),
+                        tokens.get("refreshToken"),
+                        userDetails.getUsername(),
+                        userDetails.getUsername(),
+                        86400 // 24 horas en segundos
+                ));
+            } catch (Exception e) {
+                System.out.println("⚠️ [LOGIN] Error generating tokens with role, using fallback: " + e.getMessage());
+                e.printStackTrace();
+
+                // Si hay error generando tokens con rol, usar método por defecto
+                Map<String, String> tokens = tokenService.generateTokens(authentication);
+
+                return ResponseEntity.ok(new JwtResponse(
+                        tokens.get("accessToken"),
+                        tokens.get("refreshToken"),
+                        userDetails.getUsername(),
+                        userDetails.getUsername(),
+                        86400
+                ));
+            }
+        } catch (Exception authException) {
+            System.out.println("❌ [LOGIN] Authentication failed: " + authException.getMessage());
+            authException.printStackTrace();
+            return ResponseEntity.status(401).body("Invalid credentials");
         }
     }
 
@@ -98,23 +121,31 @@ public class AuthController {
                         .body(new MessageResponse("Refresh token has been revoked"));
             }
 
-            // Generar nuevo access token
-            String newAccessToken = tokenService.refreshAccessToken(refreshToken);
-
-            // Opcionalmente, generar nuevo refresh token (rotación de tokens)
+            // Obtener username del token
             String username = jwtUtils.getUserNameFromJwtToken(refreshToken);
-            String role = jwtUtils.getRoleFromJwtToken(refreshToken);
+
+            // 🔄 NUEVO: Obtener rol actualizado desde la base de datos
+            String updatedRole;
+            try {
+                UserDto userDto = userServiceClient.getUserByEmail(username);
+                updatedRole = userDto.getRole() != null ? userDto.getRole() : "PARTICIPANTE";
+                System.out.println("🔄 [REFRESH] Updated role from DB: " + updatedRole);
+            } catch (Exception e) {
+                System.out.println("⚠️ [REFRESH] Error getting updated role, using token role");
+                updatedRole = jwtUtils.getRoleFromJwtToken(refreshToken);
+            }
 
             // Crear nueva autenticación para generar nuevo refresh token
             User userDetails = (User) userDetailsService.loadUserByUsername(username);
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities());
 
-            String newRefreshToken = jwtUtils.generateRefreshTokenWithRole(authentication, role);
+            // Generar tokens con el rol actualizado
+            Map<String, String> tokens = tokenService.generateTokensWithRole(authentication, updatedRole);
 
             return ResponseEntity.ok(new JwtResponse(
-                    newAccessToken,
-                    newRefreshToken,
+                    tokens.get("accessToken"),
+                    tokens.get("refreshToken"),
                     userDetails.getUsername(),
                     userDetails.getUsername(),
                     86400 // 24 horas en segundos

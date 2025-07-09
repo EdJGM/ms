@@ -47,7 +47,6 @@ spring:
             - Path=/api/v1/auth/logout
           filters:
             - StripPrefix=3
-            - name: JwtAuthenticationFilter
 
         - id: auth-service-revoke-token
           uri: lb://auth-service
@@ -55,7 +54,6 @@ spring:
             - Path=/api/v1/auth/revokeToken
           filters:
             - StripPrefix=3
-            - name: JwtAuthenticationFilter
 
         - id: auth-service-sessions
           uri: lb://auth-service
@@ -87,7 +85,7 @@ spring:
           predicates:
             - Path=/api/v1/admin/users/**
           filters:
-            - StripPrefix=3
+            - StripPrefix=2  # Cambiar de 3 a 2 para conservar /admin
             - name: JwtAuthenticationFilter
 
         # Cambio de contraseña (usuario autenticado)
@@ -105,54 +103,36 @@ spring:
           predicates:
             - Path=/api/v1/productos/**
           filters:
-            - StripPrefix=3
+            - StripPrefix=2  # Cambiar de 3 a 2 para mantener /productos
             - name: JwtAuthenticationFilter
 
-        # API 2: Servicio de Subastas (Subastas)
-        - id: auction-service-subastas
-          uri: lb://auction-service
-          predicates:
-            - Path=/api/v1/subastas/**
-          filters:
-            - StripPrefix=3
-            - name: JwtAuthenticationFilter
-
-        # API 3: Servicio de Pujas (Crear puja)
+        # API 3: Servicio de Pujas (Crear puja) - DEBE IR ANTES que auction-service-subastas
         - id: bid-service-crear-puja
           uri: lb://bid-service
           predicates:
             - Path=/api/v1/subastas/*/pujas
             - Method=POST
           filters:
-            - StripPrefix=3
+            - StripPrefix=2  # Cambiar de 3 a 2 para mantener /subastas
+            - name: JwtAuthenticationFilter
+
+        # API 2: Servicio de Subastas (Subastas) - DEBE IR DESPUÉS de bid-service-crear-puja
+        - id: auction-service-subastas
+          uri: lb://auction-service
+          predicates:
+            - Path=/api/v1/subastas/**
+          filters:
+            - StripPrefix=2  # Cambiar de 3 a 2 para mantener /subastas
             - name: JwtAuthenticationFilter
 
         # API 4: Servicio de Consulta de Subastas Activas
-        - id: auction-query-service-subastas
+        # Rutas específicas primero (antes que las generales)
+        - id: auction-query-service-subastas-search
           uri: lb://auction-query-service
           predicates:
-            - Path=/api/v1/subastas
-            - Method=GET
+            - Path=/api/v1/subastas/search
           filters:
-            - StripPrefix=3
-            - name: JwtAuthenticationFilter
-
-        - id: auction-query-service-subasta-detalle
-          uri: lb://auction-query-service
-          predicates:
-            - Path=/api/v1/subastas/*
-            - Method=GET
-          filters:
-            - StripPrefix=3
-            - name: JwtAuthenticationFilter
-
-        - id: auction-query-service-subastas-list
-          uri: lb://auction-query-service
-          predicates:
-            - Path=/api/v1/subastas
-            - Method=GET
-          filters:
-            - StripPrefix=3
+            - StripPrefix=2
             - name: JwtAuthenticationFilter
 
         - id: auction-query-service-subasta-detalle
@@ -164,19 +144,10 @@ spring:
             - StripPrefix=3
             - name: JwtAuthenticationFilter
 
-        - id: auction-query-service-subastas-search
+        - id: auction-query-service-subastas
           uri: lb://auction-query-service
           predicates:
-            - Path=/api/v1/subastas/search
-            - Method=GET
-          filters:
-            - StripPrefix=3
-            - name: JwtAuthenticationFilter
-
-        - id: auction-query-service-historial
-          uri: lb://auction-query-service
-          predicates:
-            - Path=/api/v1/usuarios/me/historial
+            - Path=/api/v1/subastas
             - Method=GET
           filters:
             - StripPrefix=3
@@ -188,7 +159,7 @@ spring:
           predicates:
             - Path=/api/v1/usuarios/me/historial
           filters:
-            - StripPrefix=3
+            - StripPrefix=2
             - name: JwtAuthenticationFilter
 
         # API 5: Servicio de Notificaciones (WebSocket)

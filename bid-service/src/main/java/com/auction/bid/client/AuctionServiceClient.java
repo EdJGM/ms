@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-@FeignClient(name = "auction-service", url = "http://localhost:8083")
+@FeignClient(name = "auction-service")
 public interface AuctionServiceClient {
 
     @GetMapping("/subastas/{id}/status")

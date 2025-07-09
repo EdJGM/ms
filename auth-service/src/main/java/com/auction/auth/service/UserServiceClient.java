@@ -10,12 +10,12 @@ import com.auction.auth.dto.LoginRequest;
 import com.auction.auth.dto.UserRegistrationDto;
 import com.auction.auth.dto.UserDto;
 
-@FeignClient(name = "user-service", url = "http://localhost:8082")
+@FeignClient(name = "user-service")
 public interface UserServiceClient {
-    @PostMapping("/users/register")
+    @PostMapping("/users/internal/register")
     String register(@RequestBody UserRegistrationDto registrationDto);
 
-    @PostMapping("/users/login")
+    @PostMapping("/users/internal/login")
     String login(@RequestBody LoginRequest loginRequest);
 
     @GetMapping("/users/exists")
