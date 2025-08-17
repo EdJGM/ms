@@ -24,6 +24,17 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/auctions").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                // Productos - Solo MODERADOR y ADMINISTRADOR pueden crear/modificar
+                .requestMatchers(HttpMethod.POST, "/productos").hasAnyRole("MODERADOR", "ADMINISTRADOR")
+                .requestMatchers(HttpMethod.PUT, "/productos/**").hasAnyRole("MODERADOR", "ADMINISTRADOR")
+                .requestMatchers(HttpMethod.DELETE, "/productos/**").hasAnyRole("MODERADOR", "ADMINISTRADOR")
+                .requestMatchers(HttpMethod.GET, "/productos/**").permitAll()
+                // Subastas - Solo MODERADOR y ADMINISTRADOR pueden crear/modificar
+                .requestMatchers(HttpMethod.POST, "/subastas").hasAnyRole("MODERADOR", "ADMINISTRADOR")
+                .requestMatchers(HttpMethod.PUT, "/subastas/**").hasAnyRole("MODERADOR", "ADMINISTRADOR")
+                .requestMatchers(HttpMethod.DELETE, "/subastas/**").hasAnyRole("MODERADOR", "ADMINISTRADOR")
+                .requestMatchers(HttpMethod.GET, "/subastas/**").permitAll()
+                // Cualquier otra petición requiere autenticación
                 .anyRequest().authenticated()
             );
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);

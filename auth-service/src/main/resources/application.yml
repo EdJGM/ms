@@ -1,15 +1,19 @@
 auth:
   jwtSecret: "mi_super_clave_secreta_para_jwt_2025_con_al_menos_64_caracteres_para_HS512_seguridad_completa"
   jwtExpirationMs: 86400000 # 24 hours in milliseconds
+  jwtRefreshExpirationMs: 604800000 # 7 days in milliseconds
 
 spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
-    username: postgres
-    password: Edgar123456/
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:26259/auth_db?user=root&password=
+    username: root
+    password:
+#    url: jdbc:postgresql://localhost:5432/auth_db
+#    username: postgres
+#    password: Edgar123456/
+#    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,7 +24,7 @@ spring:
         format_sql: true
 
 server:
-  port: 8081
+  port: 0
 
 eureka:
   client:
@@ -30,3 +34,13 @@ eureka:
     fetch-registry: true
   instance:
     prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+
+logging:
+  level:
+    com.auction.auth: DEBUG

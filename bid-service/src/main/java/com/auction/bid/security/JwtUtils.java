@@ -37,4 +37,18 @@ public class JwtUtils {
         }
         return false;
     }
+
+    // Método para extraer rol del token
+    public String getRoleFromJwtToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            return claims.get("role", String.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

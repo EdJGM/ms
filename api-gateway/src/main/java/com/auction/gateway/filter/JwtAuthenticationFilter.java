@@ -32,33 +32,33 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
             String path = request.getPath().toString();
-            
+
             // Skip authentication for auth endpoints
             if (isAuthEndpoint(path)) {
                 return chain.filter(exchange);
             }
 
             String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            
+
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 return onError(exchange, "No Authorization header", HttpStatus.UNAUTHORIZED);
             }
 
             String token = authHeader.substring(7);
-            
+
             try {
                 Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(key)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
+                        .setSigningKey(key)
+                        .build()
+                        .parseClaimsJws(token)
+                        .getBody();
 
                 // Add user information to headers
                 ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", claims.getSubject())
-                    .header("X-User-Email", claims.get("email", String.class))
-                    .header("X-User-Role", claims.get("role", String.class))
-                    .build();
+                        .header("X-User-Id", claims.getSubject())
+                        .header("X-User-Email", claims.get("email", String.class))
+                        .header("X-User-Role", claims.get("role", String.class))
+                        .build();
 
                 return chain.filter(exchange.mutate().request(modifiedRequest).build());
             } catch (Exception e) {
@@ -68,7 +68,7 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
     }
 
     private boolean isAuthEndpoint(String path) {
-        List<String> authEndpoints = List.of("/auth/register", "/auth/login");
+        List<String> authEndpoints = List.of("/register", "/login", "/refreshToken", "/validateToken", "/logout", "/revokeToken");
         return authEndpoints.stream().anyMatch(path::equals);
     }
 

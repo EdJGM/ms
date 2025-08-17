@@ -58,18 +58,40 @@ public class UserController {
 
     @GetMapping("/by-email")
     public ResponseEntity<User> getUserByEmail(@RequestParam String email) {
-        User user = userService.getAllUsers().stream()
-                .filter(u -> u.getEmail().equals(email))
-                .findFirst()
-                .orElse(null);
-        if (user == null) {
-            return ResponseEntity.notFound().build();
+        System.out.println("=== getUserByEmail Debug ===");
+        System.out.println("Email parameter: " + email);
+
+        try {
+            User user = userService.getAllUsers().stream()
+                    .filter(u -> u.getEmail().equals(email))
+                    .findFirst()
+                    .orElse(null);
+
+            System.out.println("User found: " + (user != null));
+            if (user != null) {
+                System.out.println("User details: " + user.getEmail() + ", " + user.getUsername() + ", " + user.getRole());
+            }
+
+            if (user == null) {
+                System.out.println("Returning 404 - User not found");
+                return ResponseEntity.notFound().build();
+            }
+            System.out.println("Returning 200 - User found");
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            System.out.println("Exception in getUserByEmail: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
         }
-        return ResponseEntity.ok(user);
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody com.auction.user.dto.UserRegistrationDto registrationDto) {
+    @DeleteMapping("/{userId}")
+    public void deleteUserById(@PathVariable Long userId) {
+        userService.deleteUserById(userId);
+    }
+
+    @PostMapping("/internal/register")
+    public ResponseEntity<?> registerUserInternal(@RequestBody com.auction.user.dto.UserRegistrationDto registrationDto) {
         if (userService.existsByEmail(registrationDto.getEmail())) {
             return ResponseEntity.badRequest().body("Email already exists");
         }
@@ -87,7 +109,7 @@ public class UserController {
         return ResponseEntity.ok("User registered successfully");
     }
 
-    @PostMapping("/login")
+    @PostMapping("/internal/login")
     public ResponseEntity<?> loginUser(@RequestBody com.auction.user.dto.UserLoginDto loginDto) {
         User user = userService.getAllUsers().stream()
                 .filter(u -> u.getEmail().equals(loginDto.getEmail()))
@@ -100,15 +122,15 @@ public class UserController {
         if (!passwordEncoder.matches(loginDto.getPassword(), user.getPassword())) {
             return ResponseEntity.status(401).body("Invalid credentials");
         }
-        
+
         // Generar JWT token
         com.auction.user.security.UserDetailsImpl userDetails = com.auction.user.security.UserDetailsImpl.build(user);
-        org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken = 
-            new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                userDetails, null, userDetails.getAuthorities()
-            );
+        org.springframework.security.authentication.UsernamePasswordAuthenticationToken authToken =
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities()
+                );
         String jwtToken = jwtUtils.generateJwtToken(authToken);
-        
+
         // Crear respuesta con token
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         response.put("token", jwtToken);
@@ -116,18 +138,7 @@ public class UserController {
         response.put("email", user.getEmail());
         response.put("username", user.getUsername());
         response.put("role", user.getRole().name());
-        
+
         return ResponseEntity.ok(response);
-    }
-
-    @PutMapping("/change-password")
-    public ResponseEntity<?> changePassword(@RequestParam Long userId, @RequestBody ChangePasswordDto changePasswordDto) {
-        userService.changePassword(userId, changePasswordDto.getOldPassword(), changePasswordDto.getNewPassword());
-        return ResponseEntity.ok("Password changed successfully");
-    }
-
-    @DeleteMapping("/{userId}")
-    public void deleteUserById(@PathVariable Long userId) {
-        userService.deleteUserById(userId);
     }
 }

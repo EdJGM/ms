@@ -33,6 +33,119 @@ services:
     networks:
       - auction-network
 
+  # Configuracion CockcoroacDB (6 nodos)
+  cockroach1:
+    image: cockroachdb/cockroach:latest
+    container_name: crdb-nodeAUC1
+    hostname: crdb-nodeAUC1
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    volumes:
+      - cockroach1:/cockroach/cockroach-data
+    command: start --insecure --store=node1 --listen-addr=0.0.0.0:26257 --http-addr=0.0.0.0:8080 --join=crdb-nodeAUC1:26257,crdb-nodeAUC2:26257,crdb-nodeAUC3:26257,crdb-nodeAUC4:26257,crdb-nodeAUC5:26257,crdb-nodeAUC6:26257 --advertise-addr=crdb-nodeAUC1:26257
+    networks:
+      - auction-network
+
+  cockroach2:
+    image: cockroachdb/cockroach:latest
+    container_name: crdb-nodeAUC2
+    hostname: crdb-nodeAUC2
+    ports:
+      - "26258:26257"
+      - "8081:8080"
+    volumes:
+      - cockroach2:/cockroach/cockroach-data
+    command: start --insecure --store=node2 --listen-addr=0.0.0.0:26257 --http-addr=0.0.0.0:8080 --join=crdb-nodeAUC1:26257,crdb-nodeAUC2:26257,crdb-nodeAUC3:26257,crdb-nodeAUC4:26257,crdb-nodeAUC5:26257,crdb-nodeAUC6:26257 --advertise-addr=crdb-nodeAUC2:26257
+    depends_on:
+      - cockroach1
+    networks:
+      - auction-network
+
+  cockroach3:
+    image: cockroachdb/cockroach:latest
+    container_name: crdb-nodeAUC3
+    hostname: crdb-nodeAUC3
+    ports:
+      - "26259:26257"
+      - "8082:8080"
+    volumes:
+      - cockroach3:/cockroach/cockroach-data
+    command: start --insecure --store=node3 --listen-addr=0.0.0.0:26257 --http-addr=0.0.0.0:8080 --join=crdb-nodeAUC1:26257,crdb-nodeAUC2:26257,crdb-nodeAUC3:26257,crdb-nodeAUC4:26257,crdb-nodeAUC5:26257,crdb-nodeAUC6:26257 --advertise-addr=crdb-nodeAUC3:26257
+    depends_on:
+      - cockroach1
+    networks:
+      - auction-network
+
+  cockroach4:
+    image: cockroachdb/cockroach:latest
+    container_name: crdb-nodeAUC4
+    hostname: crdb-nodeAUC4
+    ports:
+      - "26260:26257"
+      - "8083:8080"
+    volumes:
+      - cockroach4:/cockroach/cockroach-data
+    command: start --insecure --store=node4 --listen-addr=0.0.0.0:26257 --http-addr=0.0.0.0:8080 --join=crdb-nodeAUC1:26257,crdb-nodeAUC2:26257,crdb-nodeAUC3:26257,crdb-nodeAUC4:26257,crdb-nodeAUC5:26257,crdb-nodeAUC6:26257 --advertise-addr=crdb-nodeAUC4:26257
+    depends_on:
+      - cockroach1
+    networks:
+      - auction-network
+
+  cockroach5:
+    image: cockroachdb/cockroach:latest
+    container_name: crdb-nodeAUC5
+    hostname: crdb-nodeAUC5
+    ports:
+      - "26261:26257"
+      - "8084:8080"
+    volumes:
+      - cockroach5:/cockroach/cockroach-data
+    command: start --insecure --store=node5 --listen-addr=0.0.0.0:26257 --http-addr=0.0.0.0:8080 --join=crdb-nodeAUC1:26257,crdb-nodeAUC2:26257,crdb-nodeAUC3:26257,crdb-nodeAUC4:26257,crdb-nodeAUC5:26257,crdb-nodeAUC6:26257 --advertise-addr=crdb-nodeAUC5:26257
+    depends_on:
+      - cockroach1
+    networks:
+      - auction-network
+
+  cockroach6:
+    image: cockroachdb/cockroach:latest
+    container_name: crdb-nodeAUC6
+    hostname: crdb-nodeAUC6
+    ports:
+      - "26262:26257"
+      - "8086:8080"
+    volumes:
+      - cockroach6:/cockroach/cockroach-data
+    command: start --insecure --store=node6 --listen-addr=0.0.0.0:26257 --http-addr=0.0.0.0:8080 --join=crdb-nodeAUC1:26257,crdb-nodeAUC2:26257,crdb-nodeAUC3:26257,crdb-nodeAUC4:26257,crdb-nodeAUC5:26257,crdb-nodeAUC6:26257 --advertise-addr=crdb-nodeAUC6:26257
+    depends_on:
+      - cockroach1
+    networks:
+      - auction-network
+
+  # Initialization service - runs once to initialize the cluster
+  cockroach-init:
+    image: cockroachdb/cockroach:latest
+    container_name: crdb-initAUC
+    command: init --insecure --host=crdb-nodeAUC1:26257
+    depends_on:
+      - cockroach1
+      - cockroach2
+      - cockroach3
+      - cockroach4
+      - cockroach5
+      - cockroach6
+    networks:
+      - auction-network
+    restart: "no"
+
+volumes:
+  cockroach1:
+  cockroach2:
+  cockroach3:
+  cockroach4:
+  cockroach5:
+  cockroach6:
+
 networks:
   auction-network:
     driver: bridge

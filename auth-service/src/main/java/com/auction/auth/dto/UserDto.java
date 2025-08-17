@@ -8,6 +8,7 @@ public class UserDto {
     private String firstName;
     private String lastName;
     private String phoneNumber;
+    private String role;
 
     // Constructors
     public UserDto() {}
@@ -20,6 +21,17 @@ public class UserDto {
         this.firstName = firstName;
         this.lastName = lastName;
         this.phoneNumber = phoneNumber;
+    }
+
+    public UserDto(Long id, String username, String email, String password, String firstName, String lastName, String phoneNumber, String role) {
+        this.id = id;
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phoneNumber = phoneNumber;
+        this.role = role;
     }
 
     // Getters and Setters
@@ -43,4 +55,22 @@ public class UserDto {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
+    public static String mapUserRole(String originalRole) {
+        if (originalRole == null) return "PARTICIPANTE";
+
+        switch (originalRole.toUpperCase()) {
+            case "USER":
+                return "PARTICIPANTE";
+            case "ADMIN":
+                return "ADMINISTRADOR";
+            case "MODERATOR":
+                return "MODERADOR";
+            default:
+                return originalRole;
+        }
+    }
 }

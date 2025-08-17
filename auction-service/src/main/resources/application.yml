@@ -1,14 +1,17 @@
 server:
-  port: 8083
+  port: 0
 
 spring:
   application:
     name: auction-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/auctions_db
-    username: postgres
-    password: Edgar123456/
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:26257/auctions_db?user=root&password=
+    username: root
+    password:
+  #    url: jdbc:postgresql://localhost:5432/auctions_db
+  #    username: postgres
+  #    password: Edgar123456/
+  #    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -17,15 +20,11 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  redis:
-    host: localhost
-    port: 6379
-    timeout: 2000ms
   rabbitmq:
     host: localhost
     port: 5672
     username: admin
-    password: password
+    password: admin
 
 auth:
   jwtSecret: "mi_super_clave_secreta_para_jwt_2025_con_al_menos_64_caracteres_para_HS512_seguridad_completa"
@@ -46,17 +45,11 @@ management:
       exposure:
         include: health, info, metrics
 
-logging:
-  level:
-    com.auction.auction: DEBUG
+sync:
+  auctions:
+    enabled: true
+    interval: 300000 # 5 minutos
 
----
-spring:
-  config:
-    activate:
-      on-profile: docker
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+rabbitmq:
+  queue:
+    auction: auction.queue

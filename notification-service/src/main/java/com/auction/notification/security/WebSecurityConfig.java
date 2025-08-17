@@ -16,16 +16,18 @@ public class WebSecurityConfig {
     public WebSecurityConfig(AuthTokenFilter authTokenFilter) {
         this.authTokenFilter = authTokenFilter;
     }
+
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.cors(cors -> cors.disable())
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/notifications/email").authenticated()
-                .requestMatchers("/actuator/**").permitAll()
-                .anyRequest().permitAll()
-            );
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/ws/**").permitAll() // WebSocket endpoints
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated()
+                );
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

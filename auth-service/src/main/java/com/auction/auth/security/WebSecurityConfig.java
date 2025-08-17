@@ -14,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -21,6 +22,9 @@ public class WebSecurityConfig {
     
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
+    
+    @Autowired
+    private RoleBasedAuthorizationFilter roleBasedAuthorizationFilter;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -47,12 +51,17 @@ public class WebSecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/register").permitAll()
-                .requestMatchers("/auth/login").permitAll()
+                .requestMatchers("/register").permitAll()
+                .requestMatchers("/login").permitAll()
+                .requestMatchers("/refreshToken").permitAll()
+                .requestMatchers("/validateToken").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/swagger-ui/**").permitAll()
+                .requestMatchers("/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated()
-            );
-        
+            )
+            .addFilterBefore(roleBasedAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }

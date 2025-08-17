@@ -8,8 +8,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -47,7 +45,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role = Role.USER;
+    private Role role = Role.PARTICIPANTE;
 
     @Column(name = "is_active")
     private Boolean isActive = true;
@@ -106,6 +104,6 @@ public class User {
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     public enum Role {
-        USER, ADMIN
+        PARTICIPANTE, MODERADOR, ADMINISTRADOR
     }
 }
